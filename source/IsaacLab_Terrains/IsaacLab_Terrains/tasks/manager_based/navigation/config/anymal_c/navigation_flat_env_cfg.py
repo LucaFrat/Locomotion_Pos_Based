@@ -20,7 +20,7 @@ from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
 import IsaacLab_Terrains.tasks.manager_based.navigation.mdp as mdp
-from IsaacLab_Terrains.tasks.manager_based.locomotion.velocity.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
+from IsaacLab_Terrains.tasks.manager_based.locomotion.position.config.anymal_c.flat_env_cfg import AnymalCFlatEnvCfg
 import IsaacLab_Terrains.tasks.manager_based.navigation.mdp.commands as obstacle_cmd
 
 

@@ -18,7 +18,7 @@ from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
 
 
 import IsaacLab_Terrains.tasks.manager_based.navigation.mdp as mdp
-from IsaacLab_Terrains.tasks.manager_based.locomotion.velocity.config.anymal_c.rough_env_cfg import AnymalCRoughEnvCfg
+from IsaacLab_Terrains.tasks.manager_based.locomotion.position.config.anymal_c.rough_env_cfg import AnymalCRoughEnvCfg
 import IsaacLab_Terrains.tasks.manager_based.navigation.mdp.commands as obstacle_cmd
 
 
