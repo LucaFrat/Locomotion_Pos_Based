@@ -83,8 +83,6 @@ class UniformPose3dPolarCommand(UniformPoseCommand):
         offset_x = r * torch.cos(theta)
         offset_y = r * torch.sin(theta)
 
-        rand_yaw = (torch.rand(len(env_ids), device=self.device) * 2 * torch.pi) - torch.pi
-
         self.pose_command_b[env_ids, 0] = offset_x
         self.pose_command_b[env_ids, 1] = offset_y
         self.pose_command_b[env_ids, 2] = 0.5
@@ -115,7 +113,6 @@ class TimeRemainingCommand(CommandTerm):
 
     @property
     def command(self):
-        print(mdp.remaining_time_s(self.env))
         return mdp.remaining_time_s(self.env)
 
 

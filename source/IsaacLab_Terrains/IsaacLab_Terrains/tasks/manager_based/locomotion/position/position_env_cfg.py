@@ -28,27 +28,19 @@ from isaaclab.markers import VisualizationMarkersCfg
 
 import IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp as mdp
 
-##
-# Pre-defined configs
-##
-from isaaclab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
-# from isaaclab.terrains.config.flat import FLAT_TERRAINS_CFG
-from IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp.myTerrainCfg import MY_TERRAIN_CFG
+from IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp.myTerrainCfg import VELOCITY_TERRAIN_CFG, POSITION_TERRAIN_CFG
 
-##
-# Scene definition
-##
+
 
 
 @configclass
 class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
-    # ground terrain
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=MY_TERRAIN_CFG,
+        terrain_generator=VELOCITY_TERRAIN_CFG,
         max_init_terrain_level=5,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -64,12 +56,11 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
         debug_vis=False,
     )
-    # robots
+
     robot: ArticulationCfg = MISSING
-    # sensors
 
     contact_forces = ContactSensorCfg(prim_path="{ENV_REGEX_NS}/Robot/.*", history_length=3, track_air_time=True)
-    # lights
+
     sky_light = AssetBaseCfg(
         prim_path="/World/skyLight",
         spawn=sim_utils.DomeLightCfg(
@@ -78,26 +69,7 @@ class MySceneCfg(InteractiveSceneCfg):
         ),
     )
 
-    # cone = RigidObjectCfg(
-    #     prim_path="{ENV_REGEX_NS}/Cone",
-    #     spawn=sim_utils.ConeCfg(
-    #         radius=0.2,
-    #         height=1.0,
-    #         axis="Z",
-    #         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
-    #         # Collision and Rigid Body properties are required for physical interaction
-    #         collision_props=sim_utils.CollisionPropertiesCfg(),
-    #         rigid_props=sim_utils.RigidBodyPropertiesCfg(
-    #             rigid_body_enabled=True,
-    #             solver_position_iteration_count=2,
-    #         ),
-    #         mass_props=sim_utils.MassPropertiesCfg(mass=100.0),
-    #     ),
-    #     init_state=RigidObjectCfg.InitialStateCfg(pos=(2.0, 0.0, 1.0)),
-    # )
 
-    # 4. LiDAR (RayCaster)
-    # Replaces 'height_scanner' for obstacle detection
     height_scanner = RayCasterCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base",
         offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
@@ -107,25 +79,6 @@ class MySceneCfg(InteractiveSceneCfg):
         mesh_prim_paths=["/World/ground"],
     )
 
-    # camera = TiledCameraCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/base/camera",
-    #     update_period=5, # 10Hz
-    #     height=64,
-    #     width=80,
-    #     debug_vis=False,
-    #     data_types=["rgb", "distance_to_image_plane"],
-    #     spawn=sim_utils.PinholeCameraCfg(
-    #         focal_length=24.0, focus_distance=400.0, horizontal_aperture=20.955, clipping_range=(0.1, 8.0)
-    #     ),
-    #     offset=CameraCfg.OffsetCfg(pos=(-0.4, 0.0, 0.1), rot=(0.5, -0.5, -0.5, 0.5), convention="ros"),
-    # )
-
-    # contact_forces_cone = ContactSensorCfg(
-    #     prim_path="{ENV_REGEX_NS}/Robot/base",
-    #     history_length=1,
-    #     track_air_time=False,
-    #     filter_prim_paths_expr=["{ENV_REGEX_NS}/Cone"],
-    # )
 
 
 ##
@@ -136,16 +89,6 @@ class MySceneCfg(InteractiveSceneCfg):
 @configclass
 class CommandsCfg:
     """Command specifications for the MDP."""
-
-    # pose_command = mdp.commands.UniformPose2dPolarCommandCfg(
-    #     asset_name="robot",
-    #     simple_heading=False,
-    #     resampling_time_range=(8.0, 8.0),
-    #     debug_vis=True,
-    #     radius_range=(1.0, 5.0),
-    #     heading_range=(-3.14, 3.14),
-    #     ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-5.0, 5.0), pos_y=(-5.0, 5.0), heading=(-math.pi, math.pi)),
-    # )
 
     pose_command = mdp.commands.UniformPose3dPolarCommandCfg(
         asset_name="robot",
@@ -192,16 +135,14 @@ class ObservationsCfg:
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
 
-        projected_gravity = ObsTerm(
-            func=mdp.projected_gravity,
-            noise=Unoise(n_min=-0.05, n_max=0.05),
-        )
         pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
         time_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "time_remaining"})
 
         joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
         joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+
         actions = ObsTerm(func=mdp.last_action)
+
         height_scan = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
@@ -215,6 +156,7 @@ class ObservationsCfg:
 
     # observation groups
     policy: PolicyCfg = PolicyCfg()
+
 
 
 @configclass
@@ -316,7 +258,7 @@ class EventCfg:
 class RewardsCfg:
     """Reward terms for the MDP."""
 
-    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-200.0)
+
     # -- task
     task_reward = RewTerm(
         func=mdp.get_to_pos_in_time,
@@ -336,26 +278,13 @@ class RewardsCfg:
 
     stalling = RewTerm(
         func=mdp.stalling_penalty,
-        weight=-0.5,
+        weight=-0.1,
         params={"command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot"),
                 "reward_duration": 1.0,
                 },
     )
 
-    # position_tracking = RewTerm(
-    #     func=mdp.position_command_error_tanh,
-    #     weight=5.0,
-    #     params={"std": 2.0,
-    #             "command_name": "pose_command",
-    #             "asset_cfg": SceneEntityCfg("robot"),
-    #     },
-    # )
-    # progress = RewTerm(
-    #     func=mdp.progress_toward_goal,
-    #     weight=0.5, # Positive signal for moving in the right direction
-    #     params={"command_name": "pose_command"},
-    # )
 
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
@@ -398,6 +327,7 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     terrain_levels = CurrTerm(func=mdp.terrain_levels_pos)
+    # goal_distance = CurrTerm(func=mdp)
 
 
 ##

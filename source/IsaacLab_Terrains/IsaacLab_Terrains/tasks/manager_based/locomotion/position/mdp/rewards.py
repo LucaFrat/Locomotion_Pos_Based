@@ -171,14 +171,15 @@ def get_to_pos_in_time(
     cmd_term = env.command_manager.get_term(command_name)
 
     robot_pos_w = robot.data.root_pos_w[:, :3]
-    goal_pos_w = cmd_term.pose_command_w[:, :3]
-    # print(goal_pos_w[0])
+    robot_start_pos_w = env.scene.env_origins[:, :3]
+    goal_pos_b = cmd_term.pose_command_b[:, :3]
+
+    robot_pos_b = robot_pos_w - robot_start_pos_w
 
     remaining_time = mdp.remaining_time_s(env)
     time_is_enough = torch.squeeze(remaining_time < reward_duration)
 
-    error = torch.norm(robot_pos_w - goal_pos_w, dim=1)
-    # print(error[10:15])
+    error = torch.norm(robot_pos_b - goal_pos_b, dim=1)
     reward = 1.0 / ( 1.0 + error**2 ) / reward_duration
 
     return reward * time_is_enough
@@ -194,10 +195,12 @@ def exploration_incentive(
     cmd_term = env.command_manager.get_term(command_name)
 
     robot_pos_w = robot.data.root_pos_w[:, :3]
+    robot_start_pos_w = env.scene.env_origins[:, :3]
     robot_vel_w = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_w = cmd_term.pose_command_w[:, :3]
+    goal_pos_b = cmd_term.pose_command_b[:, :3]
 
-    pos_error = goal_pos_w - robot_pos_w
+    robot_pos_b = robot_pos_w - robot_start_pos_w
+    pos_error = goal_pos_b - robot_pos_b
 
     numerator = torch.sum(robot_vel_w * pos_error, dim=1)
     denominator = torch.mul(torch.linalg.vector_norm(robot_vel_w, dim=1), torch.linalg.vector_norm(pos_error, dim=1))
@@ -216,8 +219,14 @@ def stalling_penalty(
     cmd_term = env.command_manager.get_term(command_name)
 
     robot_pos_w = robot.data.root_pos_w[:, :3]
-    robot_vel_w = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_w = cmd_term.pose_command_w[:, :3]
+    robot_start_pos_w = env.scene.env_origins[:, :3]
+    robot_vel_b = robot.data.root_lin_vel_b[:, :3]
+    goal_pos_b = cmd_term.pose_command_b[:, :3]
+
+    robot_pos_b = robot_pos_w - robot_start_pos_w
+    # print(f"pos_b: {robot_pos_b[15]}")
+    # print(f"goal_b: {goal_pos_b[15]}")
+    # print("-"*20)
 
     task_val = get_to_pos_in_time(
         env,
@@ -230,8 +239,8 @@ def stalling_penalty(
     if torch.mean(task_val) > 0.5:
         return torch.zeros(env.scene.num_envs, device="cuda")
     else:
-        is_slow = torch.norm(robot_vel_w, dim=1) < 0.1
-        is_far = torch.norm(robot_pos_w - goal_pos_w, dim=1) > 0.5
+        is_slow = torch.norm(robot_vel_b, dim=1) < 0.1
+        is_far = torch.norm(robot_pos_b - goal_pos_b, dim=1) > 0.5
         reward = torch.ones(env.scene.num_envs, device="cuda")
 
         is_zero_reward = ~(is_slow & is_far)

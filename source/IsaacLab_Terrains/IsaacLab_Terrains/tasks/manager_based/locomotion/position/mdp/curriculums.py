@@ -57,18 +57,21 @@ def terrain_levels_vel(
 
 def terrain_levels_pos(
     env: ManagerBasedRLEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
-) -> torch.Tensor:
+    ) -> torch.Tensor:
 
     terrain: TerrainImporter = env.scene.terrain
 
-    asset = env.scene[asset_cfg.name]
-    root_pos_w = asset.data.root_pos_w[env_ids, :3]
+    robot = env.scene[asset_cfg.name]
+    robot_pos_w = robot.data.root_pos_w[env_ids, :3]
+    robot_start_pos_w = env.scene.env_origins[env_ids, :3]
 
     cmd_term = env.command_manager.get_term("pose_command")
+    goal_pos_b = cmd_term.pose_command_b[env_ids, :3]
 
-    target_pos_w = cmd_term.pose_command_w[env_ids, :3]
+    robot_pos_b = robot_pos_w - robot_start_pos_w
 
-    dist_to_goal = torch.norm(target_pos_w - root_pos_w, dim=1)
+    dist_to_goal = torch.norm(goal_pos_b - robot_pos_b, dim=1)
+
     move_up = dist_to_goal < 0.5
     move_down = dist_to_goal > 0.5
     move_down *= ~move_up
@@ -77,3 +80,6 @@ def terrain_levels_pos(
     terrain.update_env_origins(env_ids, move_up, move_down)
 
     return torch.mean(terrain.terrain_levels.float())
+
+
+

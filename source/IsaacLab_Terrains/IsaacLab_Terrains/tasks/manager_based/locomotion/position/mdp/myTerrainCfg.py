@@ -7,9 +7,8 @@
 
 import isaaclab.terrains as terrain_gen
 from isaaclab.terrains import TerrainGeneratorCfg
-from .terrains import CustomMeshCfg
 
-MY_TERRAIN_CFG = TerrainGeneratorCfg(
+VELOCITY_TERRAIN_CFG = TerrainGeneratorCfg(
     size=(14.0, 14.0),
     border_width=20.0,
     num_rows=8,
@@ -19,19 +18,6 @@ MY_TERRAIN_CFG = TerrainGeneratorCfg(
     slope_threshold=0.75,
     use_cache=False,
     sub_terrains={
-        # "pit": terrain_gen.MeshPitTerrainCfg(
-        #     proportion=0.9,
-        #     pit_depth_range=(0.1, 0.4),
-        #     platform_width=4.0,
-        # ),
-        # "gap": terrain_gen.MeshGapTerrainCfg(
-        #     proportion=1.0,
-        #     gap_width_range=(0.02, 0.5),
-        #     platform_width=3.0
-        # ),
-        # "custom": CustomMeshCfg(
-        #     proportion=0.9,
-        # ),
         "pyramid_stairs": terrain_gen.MeshPyramidStairsTerrainCfg(
             proportion=0.2,
             step_height_range=(0.05, 0.23),
@@ -62,4 +48,27 @@ MY_TERRAIN_CFG = TerrainGeneratorCfg(
         ),
     },
 )
-"""Rough terrains configuration."""
+
+
+POSITION_TERRAIN_CFG = TerrainGeneratorCfg(
+    size=(14.0, 14.0),
+    border_width=20.0,
+    num_rows=8,
+    num_cols=8,
+    horizontal_scale=0.1,
+    vertical_scale=0.005,
+    slope_threshold=0.75,
+    use_cache=False,
+    sub_terrains={
+        "pit": terrain_gen.MeshPitTerrainCfg(
+            proportion=1.0,
+            pit_depth_range=(0.02, 0.4),
+            platform_width=1.5,
+        ),
+        # "gap": terrain_gen.MeshGapTerrainCfg(
+        #     proportion=1.0,
+        #     gap_width_range=(0.02, 0.5),
+        #     platform_width=3.0
+        # ),
+    },
+)
