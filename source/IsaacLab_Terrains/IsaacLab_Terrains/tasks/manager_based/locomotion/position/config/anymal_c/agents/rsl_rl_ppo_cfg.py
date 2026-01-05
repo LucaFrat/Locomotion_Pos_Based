@@ -12,8 +12,8 @@ from IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp.symmetry impo
 
 @configclass
 class AnymalCRoughPPORunnerCfg(RslRlOnPolicyRunnerCfg):
-    num_steps_per_env = 24
-    max_iterations = 1500
+    num_steps_per_env = 48
+    max_iterations = 2000
     save_interval = 50
     experiment_name = "anymal_c_rough"
     policy = RslRlPpoActorCriticCfg(
