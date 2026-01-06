@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import torch
 from typing import TYPE_CHECKING
+from torch.linalg import vector_norm
 
 from isaaclab.envs import mdp
 from isaaclab.managers import SceneEntityCfg
@@ -141,22 +142,24 @@ def position_command_error_tanh(
     std: float,
     command_name: str,
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
-    ) -> torch.Tensor:
+) -> torch.Tensor:
     """Reward position tracking with tanh kernel."""
-
-    asset = env.scene[asset_cfg.name]
-    root_pos_w = asset.data.root_pos_w[:, :2]
-
+    robot = env.scene[asset_cfg.name]
+    body_idx = robot.find_bodies("base")[0][0]
     cmd_term = env.command_manager.get_term(command_name)
 
-    target_pos_w = cmd_term.pose_command_w[:, :2]
+    robot_pos_w = robot.data.body_pos_w[:, body_idx]
+    goal_pos_w = cmd_term.pose_command_w[:, :3]
 
-    start_pos_w = env.scene.env_origins[:, :2]
+    distance = torch.norm(robot_pos_w - goal_pos_w, dim=1)
+    return 1 - torch.tanh(distance / std)
 
-    total_mission_dist = torch.norm(target_pos_w - start_pos_w, dim=1)
-    dist_to_goal = torch.norm(target_pos_w - root_pos_w, dim=1)
-    distance = dist_to_goal / total_mission_dist * 3.0
-    # print(f"DISTANCE: {distance}")
+
+def position_command_error_tanh(env: ManagerBasedRLEnv, std: float, command_name: str) -> torch.Tensor:
+    """Reward position tracking with tanh kernel."""
+    command = env.command_manager.get_command(command_name)
+    des_pos_b = command[:, :3]
+    distance = torch.norm(des_pos_b, dim=1)
     return 1 - torch.tanh(distance / std)
 
 
@@ -167,19 +170,19 @@ def get_to_pos_in_time(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
     ) -> torch.Tensor:
 
-    robot = env.scene[asset_cfg.name]
-    cmd_term = env.command_manager.get_term(command_name)
+    # robot = env.scene[asset_cfg.name]
+    # body_idx = robot.find_bodies("base")[0][0]
+    command = env.command_manager.get_command(command_name)
 
-    robot_pos_w = robot.data.root_pos_w[:, :3]
-    robot_start_pos_w = env.scene.env_origins[:, :3]
-    goal_pos_b = cmd_term.pose_command_b[:, :3]
+    # base_pos_b = robot.data.body_pos_w[:, body_idx]
 
-    robot_pos_b = robot_pos_w - robot_start_pos_w
+    # this should already be the goal position in "base" frame, updated per frame
+    goal_pos_b = command[:, :3]
 
     remaining_time = mdp.remaining_time_s(env)
     time_is_enough = torch.squeeze(remaining_time < reward_duration)
 
-    error = torch.norm(robot_pos_b - goal_pos_b, dim=1)
+    error = torch.norm(goal_pos_b, dim=1)
     reward = 1.0 / ( 1.0 + error**2 ) / reward_duration
 
     return reward * time_is_enough
@@ -192,19 +195,19 @@ def exploration_incentive(
     ) -> torch.Tensor:
 
     robot = env.scene[asset_cfg.name]
-    cmd_term = env.command_manager.get_term(command_name)
+    # body_idx = robot.find_bodies("base")[0][0]
 
-    robot_pos_w = robot.data.root_pos_w[:, :3]
-    robot_start_pos_w = env.scene.env_origins[:, :3]
+    command = env.command_manager.get_command(command_name)
+
+    # robot_pos_w = robot.data.body_pos_w[:, body_idx]
     robot_vel_w = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_b = cmd_term.pose_command_b[:, :3]
+    goal_pos_b = command[:, :3]
 
-    robot_pos_b = robot_pos_w - robot_start_pos_w
-    pos_error = goal_pos_b - robot_pos_b
+    pos_error = goal_pos_b
 
     numerator = torch.sum(robot_vel_w * pos_error, dim=1)
-    denominator = torch.mul(torch.linalg.vector_norm(robot_vel_w, dim=1), torch.linalg.vector_norm(pos_error, dim=1))
-    reward = torch.div(numerator, denominator + 1e-6)
+    denominator = torch.norm(robot_vel_w, dim=1) * torch.norm(pos_error, dim=1)
+    reward = numerator / (denominator + 1e-6)
     return reward
 
 
@@ -216,17 +219,13 @@ def stalling_penalty(
     ) -> torch.Tensor:
 
     robot = env.scene[asset_cfg.name]
-    cmd_term = env.command_manager.get_term(command_name)
+    # body_idx = robot.find_bodies("base")[0][0]
 
-    robot_pos_w = robot.data.root_pos_w[:, :3]
-    robot_start_pos_w = env.scene.env_origins[:, :3]
+    command = env.command_manager.get_command(command_name)
+
+    # robot_pos_w = robot.data.body_pos_w[:, body_idx]
     robot_vel_b = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_b = cmd_term.pose_command_b[:, :3]
-
-    robot_pos_b = robot_pos_w - robot_start_pos_w
-    # print(f"pos_b: {robot_pos_b[15]}")
-    # print(f"goal_b: {goal_pos_b[15]}")
-    # print("-"*20)
+    goal_pos_b = command[:, :3]
 
     task_val = get_to_pos_in_time(
         env,
@@ -240,7 +239,7 @@ def stalling_penalty(
         return torch.zeros(env.scene.num_envs, device="cuda")
     else:
         is_slow = torch.norm(robot_vel_b, dim=1) < 0.1
-        is_far = torch.norm(robot_pos_b - goal_pos_b, dim=1) > 0.5
+        is_far = torch.norm(goal_pos_b, dim=1) > 0.5
         reward = torch.ones(env.scene.num_envs, device="cuda")
 
         is_zero_reward = ~(is_slow & is_far)

@@ -41,7 +41,7 @@ class MySceneCfg(InteractiveSceneCfg):
         prim_path="/World/ground",
         terrain_type="generator",
         terrain_generator=VELOCITY_TERRAIN_CFG,
-        max_init_terrain_level=5,
+        max_init_terrain_level=1,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -90,24 +90,23 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    pose_command = mdp.commands.UniformPose3dPolarCommandCfg(
+    pose_command = mdp.commands.UniformPose2dPolarCommandCfg(
         asset_name="robot",
-        body_name="base",
+        # body_name="base",
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
-        radius_range=(1.0, 5.0),
+        simple_heading=False, # only for 2d
+        radius_range=(1.0, 3.0),
         heading_range=(-3.0, 3.0),
-        ranges=mdp.UniformPoseCommandCfg.Ranges(
+        ranges=mdp.UniformPose2dCommandCfg.Ranges(
             pos_x=(-5.0, 5.0),
             pos_y=(-5.0, 5.0),
-            pos_z=(-0.0, 0.0),
-            roll=(-0.0, 0.0),
-            pitch=(-0.0, 0.0),
-            yaw=(-0.0, 0.0)
+            heading=(-3.14, 3.14)
+            # pos_z=(-0.0, 0.0),
+            # roll=(-0.0, 0.0),
+            # pitch=(-0.0, 0.0),
+            # yaw=(-0.0, 0.0)
         ),
-        goal_pose_visualizer_cfg = FRAME_MARKER_CFG.replace(
-            prim_path="/Visuals/Command/body_pose"
-        )
     )
 
     time_remaining = mdp.commands.TimeRemainingCommandCfg(
@@ -118,28 +117,26 @@ class CommandsCfg:
 
 @configclass
 class ActionsCfg:
-    """Action specifications for the MDP."""
 
     joint_pos = mdp.JointPositionActionCfg(asset_name="robot", joint_names=[".*"], scale=0.5, use_default_offset=True)
 
 
 @configclass
 class ObservationsCfg:
-    """Observation specifications for the MDP."""
 
     @configclass
     class PolicyCfg(ObsGroup):
         """Observations for policy group."""
 
         # observation terms (order preserved)
+        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
+        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
+
         base_lin_vel = ObsTerm(func=mdp.base_lin_vel, noise=Unoise(n_min=-0.1, n_max=0.1))
         base_ang_vel = ObsTerm(func=mdp.base_ang_vel, noise=Unoise(n_min=-0.2, n_max=0.2))
 
         pose_commands = ObsTerm(func=mdp.generated_commands, params={"command_name": "pose_command"})
         time_command = ObsTerm(func=mdp.generated_commands, params={"command_name": "time_remaining"})
-
-        joint_pos = ObsTerm(func=mdp.joint_pos_rel, noise=Unoise(n_min=-0.01, n_max=0.01))
-        joint_vel = ObsTerm(func=mdp.joint_vel_rel, noise=Unoise(n_min=-1.5, n_max=1.5))
 
         actions = ObsTerm(func=mdp.last_action)
 
@@ -161,21 +158,6 @@ class ObservationsCfg:
 
 @configclass
 class EventCfg:
-    """Configuration for events."""
-
-    # reset_cone_pos = EventTerm(
-    #     func=mdp.reset_root_state_uniform,
-    #     mode="reset",  # Randomize on every reset (or use "startup" for once-only)
-    #     params={
-    #         "asset_cfg": SceneEntityCfg("cone"), # Must match the name in MySceneCfg
-    #         "pose_range": {
-    #             "x": (-2.0, 2.0),  # Randomize X between -2m and 2m
-    #             "y": (-2.0, 2.0),  # Randomize Y between -2m and 2m
-    #             "yaw": (-3.14, 3.14) # Randomize rotation
-    #         },
-    #         "velocity_range": {}, # Start with zero velocity
-    #     },
-    # )
 
     # startup
     physics_material = EventTerm(
@@ -249,7 +231,7 @@ class EventCfg:
     push_robot = EventTerm(
         func=mdp.push_by_setting_velocity,
         mode="interval",
-        interval_range_s=(10.0, 15.0),
+        interval_range_s=(2.0, 5.0),
         params={"velocity_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5)}},
     )
 
@@ -257,7 +239,6 @@ class EventCfg:
 @configclass
 class RewardsCfg:
     """Reward terms for the MDP."""
-
 
     # -- task
     task_reward = RewTerm(
@@ -270,7 +251,7 @@ class RewardsCfg:
     )
     explore = RewTerm(
         func=mdp.exploration_incentive,
-        weight=0.5,
+        weight=2.0,
         params={"command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot")
                 },
@@ -278,29 +259,22 @@ class RewardsCfg:
 
     stalling = RewTerm(
         func=mdp.stalling_penalty,
-        weight=-0.1,
+        weight=-2.0,
         params={"command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot"),
-                "reward_duration": 1.0,
+                "reward_duration": 2.0,
                 },
     )
 
+    termination_penalty = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     # -- penalties
     lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
-    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.05)
+    ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.01)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
     action_rate_l2 = RewTerm(func=mdp.action_rate_l2, weight=-0.01)
-    # feet_air_time = RewTerm(
-    #     func=mdp.feet_air_time,
-    #     weight=0.125,
-    #     params={
-    #         "sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*FOOT"),
-    #         "command_name": "base_velocity",
-    #         "threshold": 0.5,
-    #     },
-    # )
+
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
         weight=-1.0,
@@ -327,7 +301,6 @@ class CurriculumCfg:
     """Curriculum terms for the MDP."""
 
     terrain_levels = CurrTerm(func=mdp.terrain_levels_pos)
-    # goal_distance = CurrTerm(func=mdp)
 
 
 ##

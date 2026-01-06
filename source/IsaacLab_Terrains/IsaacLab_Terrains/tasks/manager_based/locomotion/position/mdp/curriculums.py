@@ -61,16 +61,9 @@ def terrain_levels_pos(
 
     terrain: TerrainImporter = env.scene.terrain
 
-    robot = env.scene[asset_cfg.name]
-    robot_pos_w = robot.data.root_pos_w[env_ids, :3]
-    robot_start_pos_w = env.scene.env_origins[env_ids, :3]
-
-    cmd_term = env.command_manager.get_term("pose_command")
-    goal_pos_b = cmd_term.pose_command_b[env_ids, :3]
-
-    robot_pos_b = robot_pos_w - robot_start_pos_w
-
-    dist_to_goal = torch.norm(goal_pos_b - robot_pos_b, dim=1)
+    command = env.command_manager.get_command("pose_command")
+    dist_to_goal = command[env_ids, :3]
+    dist_to_goal = torch.norm(dist_to_goal, dim=1)
 
     move_up = dist_to_goal < 0.5
     move_down = dist_to_goal > 0.5

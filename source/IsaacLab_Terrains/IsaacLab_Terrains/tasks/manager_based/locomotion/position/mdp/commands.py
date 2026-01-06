@@ -44,8 +44,10 @@ class UniformPose2dPolarCommand(UniformPose2dCommand):
         offset_x = r * torch.cos(theta)
         offset_y = r * torch.sin(theta)
 
-        self.pos_command_w[env_ids, 0] = robot_pos_w[:, 0] + offset_x
-        self.pos_command_w[env_ids, 1] = robot_pos_w[:, 1] + offset_y
+        self.pos_command_w[env_ids] = self._env.scene.env_origins[env_ids]
+        self.pos_command_w[env_ids, 0] += offset_x
+        self.pos_command_w[env_ids, 1] += offset_y
+        self.pos_command_w[env_ids, 2] += self.robot.data.default_root_state[env_ids, 2]
 
         self.heading_command_w[env_ids] = (torch.rand(len(env_ids), device=self.device) * 2 * torch.pi) - torch.pi
 
@@ -94,7 +96,7 @@ class UniformPose3dPolarCommandCfg(UniformPoseCommandCfg):
     asset_cfg: SceneEntityCfg = field(default_factory=lambda: SceneEntityCfg("robot"))
 
     radius_range: tuple[float, float] = (1.0, 5.0)
-    heading_range: tuple[float, float] = (-3.14159, 3.14159)
+    heading_range: tuple[float, float] = (-3.14, 3.14)
 
 
 
@@ -107,20 +109,14 @@ class TimeRemainingCommand(CommandTerm):
         super().__init__(cfg, env)
         self.env = env
 
-    """
-    Properties
-    """
-
     @property
     def command(self):
         return mdp.remaining_time_s(self.env)
-
 
     def _update_metrics(self):
         pass
     def _resample_command(self, env_ids: Sequence[int]):
         pass
-
     def _update_command(self):
         pass
 
