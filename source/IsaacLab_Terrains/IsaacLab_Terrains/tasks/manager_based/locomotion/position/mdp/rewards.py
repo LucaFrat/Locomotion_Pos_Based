@@ -173,7 +173,7 @@ def get_to_pos_in_time(
     command = env.command_manager.get_command(command_name)
 
     # this should already be the goal position in "base" frame, updated per frame
-    goal_pos_b = command[:, :3]
+    goal_pos_b = command[:, :2]
 
     remaining_time = mdp.remaining_time_s(env)
     time_is_enough = torch.squeeze(remaining_time < reward_duration)
@@ -194,8 +194,8 @@ def exploration_incentive(
 
     command = env.command_manager.get_command(command_name)
 
-    robot_vel_w = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_b = command[:, :3]
+    robot_vel_w = robot.data.root_lin_vel_b[:, :2]
+    goal_pos_b = command[:, :2]
 
     pos_error = goal_pos_b
 
@@ -216,8 +216,8 @@ def stalling_penalty(
 
     command = env.command_manager.get_command(command_name)
 
-    robot_vel_b = robot.data.root_lin_vel_b[:, :3]
-    goal_pos_b = command[:, :3]
+    robot_vel_b = robot.data.root_lin_vel_b[:, :2]
+    goal_pos_b = command[:, :2]
 
     task_val = get_to_pos_in_time(
         env,
@@ -232,7 +232,7 @@ def stalling_penalty(
     else:
         is_slow = torch.norm(robot_vel_b, dim=1) < 0.1
         is_far = torch.norm(goal_pos_b, dim=1) > 0.5
-        reward = torch.ones(env.scene.num_envs, device="cuda")
+        reward = torch.zeros(env.scene.num_envs, device="cuda")
 
-        is_zero_reward = ~(is_slow & is_far)
-        return reward * is_zero_reward
+        is_negative_reward = is_slow & is_far
+        return reward + is_negative_reward

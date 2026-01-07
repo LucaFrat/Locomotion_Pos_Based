@@ -62,7 +62,7 @@ def terrain_levels_pos(
     terrain: TerrainImporter = env.scene.terrain
 
     command = env.command_manager.get_command("pose_command")
-    dist_to_goal = command[env_ids, :3]
+    dist_to_goal = command[env_ids, :2]
     dist_to_goal = torch.norm(dist_to_goal, dim=1)
 
     move_up = dist_to_goal < 0.5

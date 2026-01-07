@@ -22,15 +22,18 @@ from isaaclab.terrains import TerrainImporterCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
-from isaaclab.markers.config import FRAME_MARKER_CFG
-from isaaclab.markers import VisualizationMarkersCfg
+from isaaclab.markers.config import CUBOID_MARKER_CFG
+
 
 
 import IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp as mdp
 
 from IsaacLab_Terrains.tasks.manager_based.locomotion.position.mdp.myTerrainCfg import VELOCITY_TERRAIN_CFG, POSITION_TERRAIN_CFG
 
-
+_GOAL_MARKER_CFG = CUBOID_MARKER_CFG.copy()
+_GOAL_MARKER_CFG.prim_path = "/Visuals/Command/pose_goal"
+_GOAL_MARKER_CFG.markers["cuboid"].size = (0.2, 0.2, 0.4)
+_GOAL_MARKER_CFG.markers["cuboid"].visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 1.0, 0.0))
 
 
 @configclass
@@ -90,23 +93,19 @@ class MySceneCfg(InteractiveSceneCfg):
 class CommandsCfg:
     """Command specifications for the MDP."""
 
-    pose_command = mdp.commands.UniformPose2dPolarCommandCfg(
+    pose_command = mdp.commands.UniformPose3dPolarCommandCfg(
         asset_name="robot",
-        # body_name="base",
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
-        simple_heading=False, # only for 2d
+        simple_heading=False,
         radius_range=(1.0, 5.0),
         heading_range=(-3.0, 3.0),
         ranges=mdp.UniformPose2dCommandCfg.Ranges(
             pos_x=(-5.0, 5.0),
             pos_y=(-5.0, 5.0),
             heading=(-3.14, 3.14)
-            # pos_z=(-0.0, 0.0),
-            # roll=(-0.0, 0.0),
-            # pitch=(-0.0, 0.0),
-            # yaw=(-0.0, 0.0)
         ),
+        goal_pose_visualizer_cfg=_GOAL_MARKER_CFG
     )
 
     time_remaining = mdp.commands.TimeRemainingCommandCfg(
@@ -251,7 +250,7 @@ class RewardsCfg:
     )
     explore = RewTerm(
         func=mdp.exploration_incentive,
-        weight=2.0,
+        weight=1.0,
         params={"command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot")
                 },
@@ -259,7 +258,7 @@ class RewardsCfg:
 
     stalling = RewTerm(
         func=mdp.stalling_penalty,
-        weight=-2.0,
+        weight=-1.5,
         params={"command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot"),
                 "reward_duration": 2.0,
@@ -313,7 +312,7 @@ class LocomotionPositionRoughEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the locomotion position-tracking environment."""
 
     # Scene settings
-    scene = MySceneCfg(num_envs=4096, env_spacing=2.5)
+    scene = MySceneCfg(num_envs=16, env_spacing=2.5)
     # Basic settings
     observations: ObservationsCfg = ObservationsCfg()
     actions: ActionsCfg = ActionsCfg()
