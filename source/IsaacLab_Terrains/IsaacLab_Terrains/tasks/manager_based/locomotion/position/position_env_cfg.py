@@ -96,7 +96,7 @@ class CommandsCfg:
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
         simple_heading=False, # only for 2d
-        radius_range=(1.0, 3.0),
+        radius_range=(1.0, 5.0),
         heading_range=(-3.0, 3.0),
         ranges=mdp.UniformPose2dCommandCfg.Ranges(
             pos_x=(-5.0, 5.0),
@@ -243,7 +243,7 @@ class RewardsCfg:
     # -- task
     task_reward = RewTerm(
         func=mdp.get_to_pos_in_time,
-        weight=5.0,
+        weight=10.0,
         params={"reward_duration": 1.0,
                 "command_name": "pose_command",
                 "asset_cfg": SceneEntityCfg("robot")
@@ -269,7 +269,7 @@ class RewardsCfg:
     termination_penalty = RewTerm(func=mdp.is_terminated, weight=-100.0)
 
     # -- penalties
-    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-2.0)
+    lin_vel_z_l2 = RewTerm(func=mdp.lin_vel_z_l2, weight=-0.5)
     ang_vel_xy_l2 = RewTerm(func=mdp.ang_vel_xy_l2, weight=-0.01)
     dof_torques_l2 = RewTerm(func=mdp.joint_torques_l2, weight=-1.0e-5)
     dof_acc_l2 = RewTerm(func=mdp.joint_acc_l2, weight=-2.5e-7)
@@ -277,7 +277,7 @@ class RewardsCfg:
 
     undesired_contacts = RewTerm(
         func=mdp.undesired_contacts,
-        weight=-1.0,
+        weight=-0.5,
         params={"sensor_cfg": SceneEntityCfg("contact_forces", body_names=".*THIGH"), "threshold": 1.0},
     )
     # -- optional penalties

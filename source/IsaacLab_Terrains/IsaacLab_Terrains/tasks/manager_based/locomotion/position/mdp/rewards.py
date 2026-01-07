@@ -170,11 +170,7 @@ def get_to_pos_in_time(
     asset_cfg: SceneEntityCfg = SceneEntityCfg("robot")
     ) -> torch.Tensor:
 
-    # robot = env.scene[asset_cfg.name]
-    # body_idx = robot.find_bodies("base")[0][0]
     command = env.command_manager.get_command(command_name)
-
-    # base_pos_b = robot.data.body_pos_w[:, body_idx]
 
     # this should already be the goal position in "base" frame, updated per frame
     goal_pos_b = command[:, :3]
@@ -195,11 +191,9 @@ def exploration_incentive(
     ) -> torch.Tensor:
 
     robot = env.scene[asset_cfg.name]
-    # body_idx = robot.find_bodies("base")[0][0]
 
     command = env.command_manager.get_command(command_name)
 
-    # robot_pos_w = robot.data.body_pos_w[:, body_idx]
     robot_vel_w = robot.data.root_lin_vel_b[:, :3]
     goal_pos_b = command[:, :3]
 
@@ -219,11 +213,9 @@ def stalling_penalty(
     ) -> torch.Tensor:
 
     robot = env.scene[asset_cfg.name]
-    # body_idx = robot.find_bodies("base")[0][0]
 
     command = env.command_manager.get_command(command_name)
 
-    # robot_pos_w = robot.data.body_pos_w[:, body_idx]
     robot_vel_b = robot.data.root_lin_vel_b[:, :3]
     goal_pos_b = command[:, :3]
 

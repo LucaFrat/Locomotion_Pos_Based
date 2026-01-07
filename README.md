@@ -1,5 +1,15 @@
 # Locomotion Position Based (Isaac Lab)
 
+
+
+<p align="center">
+  <img src="media/Anymal_pos_pyramid.gif" width="90%" alt="Final Policy Demo" />
+</p>
+<p align="center">
+  <img src="media/Anymal_pos_squares.gif" width="90%" alt="Final Policy Demo" />
+</p>
+
+
 This repository implements **End-to-End Position-Based Locomotion** using [NVIDIA Isaac Lab](https://github.com/isaac-sim/IsaacLab).
 
 It serves as a reproduction and extension of the concepts presented in the paper:
